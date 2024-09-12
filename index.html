@@ -69,7 +69,7 @@
 
         const state = {
             grid: [],
-            treasurePosition: { x: 0, y: 0 },
+            treasurePosition: { row: 0, column: 0 },
             guesses: 0,
             gameOver: false
         };
@@ -100,8 +100,8 @@
          */
         function resetGameState() {
             state.treasurePosition = {
-                x: Math.floor(Math.random() * settings.gridSize),
-                y: Math.floor(Math.random() * settings.gridSize)
+                row: Math.floor(Math.random() * settings.gridSize),
+                column: Math.floor(Math.random() * settings.gridSize)
             };
             state.guesses = 0;
             state.gameOver = false;
@@ -225,24 +225,25 @@
         /**
          * Check the cell
          * 
-         * Check the cell and update the game state
+         * A cell has been clicked, reveal the cell and update the game state
+         * to show the distance to the treasure.
          * 
-         * @param {number} xGuess - The row index of the cell
-         * @param {number} yGuess - The column index of the cell
+         * @param {number} rowGuess - The row index of the cell
+         * @param {number} columnGuess - The column index of the cell
          */
-        function checkCell(xGuess, yGuess) {
+        function checkCell(rowGuess, columnGuess) {
             if (state.gameOver) {
                 return;
             }
 
-            if (state.grid[xGuess][yGuess].revealed) {
+            if (state.grid[rowGuess][columnGuess].revealed) {
                 return;
             }
 
             incrementGuesses();
-            revealCell(xGuess, yGuess);
-            const distance = calculateDistance(xGuess, yGuess);
-            updateCellAndFeedback(xGuess, yGuess, distance);
+            revealCell(rowGuess, columnGuess);
+            const distance = calculateDistance(rowGuess, columnGuess);
+            updateCellAndFeedback(rowGuess, columnGuess, distance);
 
             if (state.guesses >= settings.maxGuesses) {
                 if (!state.gameOver) {
@@ -254,7 +255,7 @@
         /**
          * Increment the guesses
          * 
-         * Increment the guesses and update the guesses display
+         * Add one to the guesses and update the guesses display.
          */
         function incrementGuesses() {
             state.guesses++;
@@ -264,55 +265,63 @@
         /**
          * Reveal the cell
          * 
-         * Reveal the cell and update the game state
+         * Mark the cell as revealed.
          * 
-         * @param {number} x - The row index of the cell
-         * @param {number} y - The column index of the cell
+         * @param {number} row - The row index of the cell
+         * @param {number} column - The column index of the cell
          */
-        function revealCell(x, y) {
-            state.grid[x][y].revealed = true;
+        function revealCell(row, column) {
+            state.grid[row][column].revealed = true;
         }
 
         /**
          * Calculate the distance between the cell and the treasure
          * 
-         * Calculate the distance between the cell and the treasure
+         * Calculate the "Manhattan distance" between the cell and the treasure.
+         * If you're interested in how and why this math works, try to ask
+         * ChatGPT, or search google.
+         * But just know that we have this function, where you give it a
+         * row and column position, and it returns a number indicating the
+         * distance to the treasure.
          * 
-         * @param {number} x - The row index of the cell
-         * @param {number} y - The column index of the cell
+         * @param {number} row - The row index of the cell
+         * @param {number} column - The column index of the cell
          * @returns {number} - The distance between the cell and the treasure
          */
-        function calculateDistance(x, y) {
-            return Math.abs(x - state.treasurePosition.x) + Math.abs(y - state.treasurePosition.y);
+        function calculateDistance(row, column) {
+            return Math.abs(row - state.treasurePosition.row) + Math.abs(column - state.treasurePosition.column);
         }
 
         /**
          * Update the cell and feedback
          * 
-         * Update the cell and feedback
+         * This is the logic that checks if the treasure is found,
+         * or how close your guess is to the treasure.
+         * And it updates the cell content and feedback accordingly.
          * 
-         * @param {number} x - The row index of the cell
-         * @param {number} y - The column index of the cell
+         * @param {number} row - The row index of the cell
+         * @param {number} column - The column index of the cell
          * @param {number} distance - The distance between the cell and the treasure
          */
-        function updateCellAndFeedback(x, y, distance) {
-            if (x === state.treasurePosition.x && y === state.treasurePosition.y) {
-                updateFeedback("You found the treasure!");
-                updateCellContent(x, y, settings.treasureEmoji);
+        function updateCellAndFeedback(row, column, distance) {
+            if (row === state.treasurePosition.row && column === state.treasurePosition.column) {
+                updateFeedback('You found the treasure!');
+                updateCellContent(row, column, settings.treasureEmoji);
                 endGame(true);
             } else if (distance > 3) {
-                updateFeedback("You're far!");
-                updateCellContent(x, y, settings.farEmoji);
+                updateFeedback('You\'re far!');
+                updateCellContent(row, column, settings.farEmoji);
             } else {
-                updateFeedback("You're close!");
-                updateCellContent(x, y, settings.closeEmoji);
+                updateFeedback('You\'re close!');
+                updateCellContent(row, column, settings.closeEmoji);
             }
         }
 
         /**
          * Update the guesses display
          * 
-         * Update the guesses display
+         * Set the text content of the guesses element to the
+         * current number of guesses.
          */
         function updateGuessesDisplay() {
             elements.guesses.textContent = state.guesses;
@@ -321,7 +330,8 @@
         /**
          * Update the feedback
          * 
-         * Update the feedback
+         * Set the text content of the feedback element to the
+         * message given as an argument.
          * 
          * @param {string} message - The message to update the feedback with
          */
@@ -332,20 +342,22 @@
         /**
          * Update the cell content
          * 
-         * Update the cell content
+         * Set the text content of the cell at the given row and column
+         * to the content given as an argument.
          * 
-         * @param {number} x - The row index of the cell
-         * @param {number} y - The column index of the cell
+         * @param {number} row - The row index of the cell
+         * @param {number} column - The column index of the cell
          * @param {string} content - The content to update the cell with
          */
-        function updateCellContent(x, y, content) {
-            state.grid[x][y].element.textContent = content;
+        function updateCellContent(row, column, content) {
+            state.grid[row][column].element.textContent = content;
         }
 
         /**
          * End the game
          * 
-         * End the game
+         * Handle the end of the game. Do different things depending on
+         * if the player won or lost.
          * 
          * @param {boolean} won - Whether the player won the game
          */
@@ -354,8 +366,8 @@
             if (won) {
                 updateFeedback(`You found the treasure! You won in ${state.guesses} guesses!`);
             } else {
-                updateFeedback(`Game over! The treasure was at (${state.treasurePosition.x}, ${state.treasurePosition.y}).`);
-                updateCellContent(state.treasurePosition.x, state.treasurePosition.y, settings.treasureRevealEmoji);
+                updateFeedback(`Game over! The treasure was at (${state.treasurePosition.row}, ${state.treasurePosition.column}).`);
+                updateCellContent(state.treasurePosition.row, state.treasurePosition.column, settings.treasureRevealEmoji);
             }
             showRestartButton();
         }
@@ -363,7 +375,7 @@
         /**
          * Show the restart button
          * 
-         * Show the restart button
+         * Set a css style to make the restart button visible.
          */
         function showRestartButton() {
             elements.restartButton.style.display = 'block';
@@ -372,14 +384,25 @@
         /**
          * Hide the restart button
          * 
-         * Hide the restart button
+         * Set a css style to hide the restart button.
          */
         function hideRestartButton() {
             elements.restartButton.style.display = 'none';
         }
 
+        /**
+         * Restart the game
+         * 
+         * When clicking on the restart button, call the initializeGame function
+         * to start a new game.
+         */
         elements.restartButton.addEventListener('click', initializeGame);
 
+        /**
+         * Initialize the game
+         * 
+         * This call is what starts the game when the page is loaded.
+         */
         initializeGame();
     </script>
 </body>
