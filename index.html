@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Treasure Hunt Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            color: #333;
+        }
+        #guesses {
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        #gameBoard {
+            border: 2px solid #333;
+            padding: 10px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        #gameBoard div {
+            border: 1px solid #999;
+            font-size: 18px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        #gameBoard div:hover {
+            background-color: #eee;
+        }
+        #feedback {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        #restartButton {
+            margin-top: 10px;
+            padding: 5px 10px;
+            font-size: 16px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Treasure Hunt Game</h1>
+    <p>Click on the cells to find the hidden treasure within 10 guesses!</p>
+    <div id="guesses">Guesses: <span>0</span></div>
+    <div id="gameBoard"></div>
+    <div id="feedback"></div>
+    <button id="restartButton">Restart Game</button>
+
+    <script>
+        const settings = {
+            gridSize: 5,
+            maxGuesses: 10,
+            cellSize: 50,
+            cellGap: 5,
+            defaultCellContent: '?',
+            treasureEmoji: '🎉',
+            farEmoji: '❄️',
+            closeEmoji: '🔥',
+            treasureRevealEmoji: '💎'
+        };
+
+        const state = {
+            grid: [],
+            treasurePosition: { x: 0, y: 0 },
+            guesses: 0,
+            gameOver: false
+        };
+
+        const elements = {
+            guesses: document.querySelector('#guesses span'),
+            feedback: document.getElementById('feedback'),
+            gameBoard: document.getElementById('gameBoard'),
+            restartButton: document.getElementById('restartButton')
+        };
+
+        /**
+         * Initialize the game
+         * 
+         * This is the main function that starts the game.
+         * It resets the game state, creates the new game board.
+         */
+        function initializeGame() {
+            resetGameState();
+            createGameBoard();
+        }
+
+        /**
+         * Reset the game state
+         * 
+         * Resets the treasure position to a random location,
+         * and reset the various states to their initial values.
+         */
+        function resetGameState() {
+            state.treasurePosition = {
+                x: Math.floor(Math.random() * settings.gridSize),
+                y: Math.floor(Math.random() * settings.gridSize)
+            };
+            state.guesses = 0;
+            state.gameOver = false;
+            updateGuessesDisplay();
+            updateFeedback('');
+            hideRestartButton();
+        }
+
+        /**
+         * Create the new game board
+         * 
+         * Makes sure the old game board is cleared and the new one is created
+         * with the new settings.
+         */
+        function createGameBoard() {
+            clearGameBoard();
+            setGameBoardStyle();
+            createCells();
+        }
+
+        /**
+         * Clear the game board
+         * 
+         * Delete all the children of the game board element.
+         */
+        function clearGameBoard() {
+            elements.gameBoard.innerHTML = '';
+        }
+
+        /**
+         * Set the game board css style
+         *
+         * Setting syles like this results in the gameBoard element having a
+         * `style` attribute with the generated css.
+         * Example of the css generated: 
+         *   display: grid;
+         *   grid-template-columns: repeat(5, 50px);
+         *   gap: 5px;
+         */
+        function setGameBoardStyle() {
+            elements.gameBoard.style.display = 'grid';
+            elements.gameBoard.style.gridTemplateColumns = `repeat(${settings.gridSize}, ${settings.cellSize}px)`;
+            elements.gameBoard.style.gap = `${settings.cellGap}px`;
+        }
+
+        /**
+         * Create the cells of the game board
+         * 
+         * Create a 2D array of cells and add them to the game board.
+         * 
+         * Example of the 2D array structure:
+         * [
+         *   [{}, {}, {}, {}, {}],
+         *   [{}, {}, {}, {}, {}],
+         *   [{}, {}, {}, {}, {}],
+         *   [{}, {}, {}, {}, {}],
+         *   [{}, {}, {}, {}, {}],
+         * ]
+         */
+        function createCells() {
+            state.grid = [];
+            // Loop through the rows.
+            for (let row = 0; row < settings.gridSize; row++) {
+                // Loop through the columns.
+                state.grid[row] = [];
+                for (let column = 0; column < settings.gridSize; column++) {
+                    // Create the cell at the current row and column.
+                    createCell(row, column);
+                }
+            }
+        }
+
+        /**
+         * Create a cell
+         * 
+         * This function creates a new cell element, adds it to the game grid,
+         * sets its initial properties, and attaches a click event listener.
+         * The cell is represented as an object in the state.grid array.
+         * 
+         * @param {number} row - The row index of the cell in the grid
+         * @param {number} column - The column index of the cell in the grid
+         */
+        function createCell(row, column) {
+            state.grid[row][column] = {
+                element: document.createElement('div'),
+                revealed: false
+            };
+            const cell = state.grid[row][column].element;
+            setCellStyle(cell);
+            cell.addEventListener('click', () => checkCell(row, column));
+            elements.gameBoard.appendChild(cell);
+        }
+
+        /**
+         * Set the style of the cell
+         * 
+         * Setting syles like this results in the cell element having a
+         * `style` attribute with the generated css.
+         * Example of the css generated:
+         *   width: 50px;
+         *   height: 50px;
+         *   background-color: #ddd;
+         *   display: flex;
+         *   justify-content: center;
+         *   align-items: center;
+         *   cursor: pointer;
+         * 
+         * @param {HTMLElement} cell - The cell to set the style on
+         */
+        function setCellStyle(cell) {
+            cell.style.width = `${settings.cellSize}px`;
+            cell.style.height = `${settings.cellSize}px`;
+            cell.style.backgroundColor = '#ddd';
+            cell.style.display = 'flex';
+            cell.style.justifyContent = 'center';
+            cell.style.alignItems = 'center';
+            cell.style.cursor = 'pointer';
+            cell.textContent = settings.defaultCellContent;
+        }
+
+        /**
+         * Check the cell
+         * 
+         * Check the cell and update the game state
+         * 
+         * @param {number} xGuess - The row index of the cell
+         * @param {number} yGuess - The column index of the cell
+         */
+        function checkCell(xGuess, yGuess) {
+            if (state.gameOver) {
+                return;
+            }
+
+            if (state.grid[xGuess][yGuess].revealed) {
+                return;
+            }
+
+            incrementGuesses();
+            revealCell(xGuess, yGuess);
+            const distance = calculateDistance(xGuess, yGuess);
+            updateCellAndFeedback(xGuess, yGuess, distance);
+
+            if (state.guesses >= settings.maxGuesses) {
+                if (!state.gameOver) {
+                    endGame(false);
+                }
+            }
+        }
+
+        /**
+         * Increment the guesses
+         * 
+         * Increment the guesses and update the guesses display
+         */
+        function incrementGuesses() {
+            state.guesses++;
+            updateGuessesDisplay();
+        }
+
+        /**
+         * Reveal the cell
+         * 
+         * Reveal the cell and update the game state
+         * 
+         * @param {number} x - The row index of the cell
+         * @param {number} y - The column index of the cell
+         */
+        function revealCell(x, y) {
+            state.grid[x][y].revealed = true;
+        }
+
+        /**
+         * Calculate the distance between the cell and the treasure
+         * 
+         * Calculate the distance between the cell and the treasure
+         * 
+         * @param {number} x - The row index of the cell
+         * @param {number} y - The column index of the cell
+         * @returns {number} - The distance between the cell and the treasure
+         */
+        function calculateDistance(x, y) {
+            return Math.abs(x - state.treasurePosition.x) + Math.abs(y - state.treasurePosition.y);
+        }
+
+        /**
+         * Update the cell and feedback
+         * 
+         * Update the cell and feedback
+         * 
+         * @param {number} x - The row index of the cell
+         * @param {number} y - The column index of the cell
+         * @param {number} distance - The distance between the cell and the treasure
+         */
+        function updateCellAndFeedback(x, y, distance) {
+            if (x === state.treasurePosition.x && y === state.treasurePosition.y) {
+                updateFeedback("You found the treasure!");
+                updateCellContent(x, y, settings.treasureEmoji);
+                endGame(true);
+            } else if (distance > 3) {
+                updateFeedback("You're far!");
+                updateCellContent(x, y, settings.farEmoji);
+            } else {
+                updateFeedback("You're close!");
+                updateCellContent(x, y, settings.closeEmoji);
+            }
+        }
+
+        /**
+         * Update the guesses display
+         * 
+         * Update the guesses display
+         */
+        function updateGuessesDisplay() {
+            elements.guesses.textContent = state.guesses;
+        }
+
+        /**
+         * Update the feedback
+         * 
+         * Update the feedback
+         * 
+         * @param {string} message - The message to update the feedback with
+         */
+        function updateFeedback(message) {
+            elements.feedback.textContent = message;
+        }
+
+        /**
+         * Update the cell content
+         * 
+         * Update the cell content
+         * 
+         * @param {number} x - The row index of the cell
+         * @param {number} y - The column index of the cell
+         * @param {string} content - The content to update the cell with
+         */
+        function updateCellContent(x, y, content) {
+            state.grid[x][y].element.textContent = content;
+        }
+
+        /**
+         * End the game
+         * 
+         * End the game
+         * 
+         * @param {boolean} won - Whether the player won the game
+         */
+        function endGame(won) {
+            state.gameOver = true;
+            if (won) {
+                updateFeedback(`You found the treasure! You won in ${state.guesses} guesses!`);
+            } else {
+                updateFeedback(`Game over! The treasure was at (${state.treasurePosition.x}, ${state.treasurePosition.y}).`);
+                updateCellContent(state.treasurePosition.x, state.treasurePosition.y, settings.treasureRevealEmoji);
+            }
+            showRestartButton();
+        }
+
+        /**
+         * Show the restart button
+         * 
+         * Show the restart button
+         */
+        function showRestartButton() {
+            elements.restartButton.style.display = 'block';
+        }
+
+        /**
+         * Hide the restart button
+         * 
+         * Hide the restart button
+         */
+        function hideRestartButton() {
+            elements.restartButton.style.display = 'none';
+        }
+
+        elements.restartButton.addEventListener('click', initializeGame);
+
+        initializeGame();
+    </script>
+</body>
+</html>
